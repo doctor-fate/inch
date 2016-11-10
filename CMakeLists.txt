@@ -13,9 +13,9 @@ string(STRIP ${INCLUDE_DIR} INCLUDE_DIR)
 link_directories(${LIB_DIR})
 include_directories(${INCLUDE_DIR})
 
-set(SOURCE_FILES main.cpp DeclIndentDefiner.cpp DeclIndentDefiner.h
-        Position.cpp Position.h PositionManager.cpp PositionManager.h
-        BaseChecker.cpp BaseChecker.h DeclIndentsChecker.h StmtIndentsChecker.h)
+set(SOURCE_FILES main.cpp DeclIndentDefiner.cpp DeclIndentDefiner.h Position.cpp Position.h
+        PositionManager.cpp PositionManager.h BaseChecker.cpp BaseChecker.h DeclIndentsChecker.h
+        StmtIndentsChecker.h DeclIndentsChecker.cpp StmtIndentsChecker.cpp)
 
 add_executable(inch ${SOURCE_FILES})
 
