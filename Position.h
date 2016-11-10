@@ -34,3 +34,7 @@ struct Position {
     LC End;
     std::string Filename;
 };
+
+std::ostream &operator<<(std::ostream &os, const Position::LC &loc);
+
+std::ostream &operator<<(std::ostream &os, const Position &p);

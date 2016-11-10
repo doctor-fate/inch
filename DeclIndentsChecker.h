@@ -10,6 +10,7 @@ public:
         BaseChecker(context.getSourceManager(), inc, ins) { }
 
     void VisitTranslationUnitDecl(clang::TranslationUnitDecl *unit) {
+//        unit->dumpColor();
         VisitDeclContext(unit);
     }
 
@@ -87,7 +88,7 @@ public:
             }
         }
 
-        if (d->hasBody()) {
+        if (d->doesThisDeclarationHaveABody()) {
             auto cs = clang::dyn_cast<clang::CompoundStmt>(d->getBody());
             auto csp = m.GetPosition(cs);
             checkBraces(prev, csp);

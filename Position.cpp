@@ -1,14 +1,6 @@
 #include <stdlib.h>
 #include "Position.h"
 
-std::ostream &operator<<(std::ostream &os, const Position::LC &loc) {
-    return os << "{\"Line\":" << loc.Line << ",\"Column\":" << loc.Column << "}";
-}
-
-std::ostream &operator<<(std::ostream &os, const Position &p) {
-    return os << "{\"Begin\":" << p.Begin << ",\"End\":" << p.End << ",\"Filename\":\"" << p.Filename << "\"}";
-}
-
 Position::Position() { }
 
 Position::LC::LC(clang::SourceLocation loc, const clang::SourceManager &m) {
@@ -43,4 +35,12 @@ void Position::CheckEndColumnThrow(unsigned int indent) {
     if (!CheckEndColumn(indent)) {
         Throw(*this);
     }
+}
+
+std::ostream &operator<<(std::ostream &os, const Position::LC &loc) {
+    return os << "{\"Line\":" << loc.Line << ",\"Column\":" << loc.Column << "}";
+}
+
+std::ostream &operator<<(std::ostream &os, const Position &p) {
+    return os << "{\"Begin\":" << p.Begin << ",\"End\":" << p.End << ",\"Filename\":\"" << p.Filename << "\"}";
 }

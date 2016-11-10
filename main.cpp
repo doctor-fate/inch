@@ -80,7 +80,7 @@ int main(int argc, const char **argv) {
     std::string source = processFile(in);
     auto p = check(source);
     if (p != nullptr) {
-        fprintf(stdout, "%d:%d", p->Begin.Line, p->Begin.Column);
+        fprintf(stdout, "%d:%d--%d:%d", p->Begin.Line, p->Begin.Column, p->End.Line, p->End.Column);
     }
 
     in.close();

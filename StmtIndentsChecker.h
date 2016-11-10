@@ -36,12 +36,16 @@ public:
         Position tsp = m.GetPosition(ts);
         if (clang::isa<clang::CompoundStmt>(ts)) {
             checkBraces(s, tsp);
+            Visit(ts);
         } else {
             if (tsp.Begin.Line != ifp.Line && !tsp.CheckBeginColumn(inc + ins)) {
+                std::cout << inc << ' ' << ins << std::endl;
                 Position::Throw(tsp);
             }
+            inc += ins;
+            Visit(ts);
+            inc -= ins;
         }
-        Visit(ts);
 
         clang::Stmt *es = s->getElse();
         if (es == nullptr) {
@@ -52,12 +56,26 @@ public:
         Position esp = m.GetPosition(es);
         if (clang::isa<clang::CompoundStmt>(es)) {
             checkBraces(es, esp);
+            Visit(es);
+        } else if (clang::isa<clang::IfStmt>(es)) {
+            if (esp.Begin.Line != elp.Line) {
+                if (!esp.CheckBeginColumn(inc + ins)) {
+                    Position::Throw(esp);
+                }
+                inc += ins;
+                Visit(es);
+                inc -= ins;
+            } else {
+                Visit(es);
+            }
         } else {
             if (esp.Begin.Line != elp.Line && !esp.CheckBeginColumn(inc + ins)) {
                 Position::Throw(esp);
             }
+            inc += ins;
+            Visit(es);
+            inc -= ins;
         }
-        Visit(es);
     }
 
     void VisitWhileStmt(clang::WhileStmt *s) {
