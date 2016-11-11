@@ -4,6 +4,7 @@ DeclIndentsChecker::DeclIndentsChecker(clang::ASTContext &context, unsigned int 
     BaseChecker(context.getSourceManager(), inc, ins) { }
 
 void DeclIndentsChecker::VisitTranslationUnitDecl(clang::TranslationUnitDecl *unit) {
+    unit->dump();
     VisitDeclContext(unit);
 }
 
@@ -67,7 +68,7 @@ void DeclIndentsChecker::VisitFunctionDecl(clang::FunctionDecl *d) {
         clang::ParmVarDecl *fpd = d->getParamDecl(0);
         Position fpdp = m.GetPosition(fpd);
 
-        if (fpdp.Begin.Line != fp.Begin.Line && !fpdp.CheckBeginColumn(inc + ins)) {
+        if (fpdp.Begin.Line != fp.Begin.Line && fpdp.Begin.Column == 1) {
             Position::Throw(fpdp);
         }
 
@@ -84,7 +85,7 @@ void DeclIndentsChecker::VisitFunctionDecl(clang::FunctionDecl *d) {
     if (d->doesThisDeclarationHaveABody()) {
         auto cs = clang::dyn_cast<clang::CompoundStmt>(d->getBody());
         auto csp = m.GetPosition(cs);
-        checkBraces(prev, csp);
+        CheckBraces(prev, csp);
 
         StmtIndentsChecker sic(m, inc, ins);
         sic.Visit(cs);
