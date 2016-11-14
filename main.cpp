@@ -66,7 +66,7 @@ std::shared_ptr<Position> check(const std::string &code) {
 int main(int argc, const char **argv) {
     if (argc < 2) {
         fprintf(stderr, "specify source file.");
-        return 0;
+        return 1;
     }
 
     const char *filename = argv[1];
@@ -74,7 +74,7 @@ int main(int argc, const char **argv) {
     in.open(filename);
     if (in.bad()) {
         fprintf(stderr, "can not open source file.");
-        return 0;
+        return 1;
     }
 
     std::string source = processFile(in);

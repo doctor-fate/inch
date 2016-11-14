@@ -19,9 +19,9 @@ public:
 
     void VisitSwitchStmt(clang::SwitchStmt *s);
 
-    void VisitCaseStmt(clang::CaseStmt *s);
-
     void VisitCallExpr(clang::CallExpr *e);
 private:
     void checkSwitchBody(clang::SwitchStmt *s, clang::CompoundStmt *cs);
+
+    void visitSwitchCaseStmt(clang::SwitchCase *s, unsigned int cinc);
 };

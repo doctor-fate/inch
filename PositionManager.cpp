@@ -16,6 +16,10 @@ Position::LC PositionManager::FromLocation(clang::SourceLocation loc) {
     return Position::LC(loc, m);
 }
 
+Position PositionManager::FromSourceRange(clang::SourceRange sr) {
+    return getPosition(sr);
+}
+
 Position PositionManager::getPosition(clang::SourceRange sr) {
     Position::LC begin(sr.getBegin(), m);
     Position::LC end(sr.getEnd(), m);

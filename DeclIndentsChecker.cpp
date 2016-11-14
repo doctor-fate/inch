@@ -4,7 +4,6 @@ DeclIndentsChecker::DeclIndentsChecker(clang::ASTContext &context, unsigned int 
     BaseChecker(context.getSourceManager(), inc, ins) { }
 
 void DeclIndentsChecker::VisitTranslationUnitDecl(clang::TranslationUnitDecl *unit) {
-    unit->dump();
     VisitDeclContext(unit);
 }
 
@@ -37,7 +36,10 @@ void DeclIndentsChecker::VisitDeclContext(clang::DeclContext *dc, bool indent) {
 }
 
 void DeclIndentsChecker::VisitRecordDecl(clang::RecordDecl *d) {
-    VisitDeclContext(d, true);
+    Position p = m.FromSourceRange(d->getBraceRange());
+    if (p.Begin.Line != p.End.Line) {
+        VisitDeclContext(d, true);
+    }
 }
 
 void DeclIndentsChecker::VisitFieldDecl(clang::FieldDecl *d) {

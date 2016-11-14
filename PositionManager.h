@@ -14,6 +14,7 @@ public:
 
     Position::LC FromLocation(clang::SourceLocation loc);
 
+    Position FromSourceRange(clang::SourceRange sr);
 private:
     Position getPosition(clang::SourceRange sr);
 
