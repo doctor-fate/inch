@@ -38,7 +38,10 @@ std::string processFile(std::ifstream &in) {
 
 std::shared_ptr<Position> check(const std::string &code) {
     auto ep = std::make_shared<Position>();
-    auto ast = clang::tooling::buildASTFromCodeWithArgs(code, { "-x", "c", "-std=c11" });
+    auto ast = clang::tooling::buildASTFromCodeWithArgs(code, {
+        "-I", "/usr/local/lib/clang/3.9.0/include",
+        "-x", "c", "-std=c11"
+    });
     if (ast == nullptr) {
         fprintf(stderr, "ast is null. probably bad source.");
         return ep;

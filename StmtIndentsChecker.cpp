@@ -165,12 +165,19 @@ void StmtIndentsChecker::checkSwitchBody(clang::SwitchStmt *s, clang::CompoundSt
         cins = ins;
     }
 
+    clang::SwitchCase *last = nullptr;
     for (auto chs : cs->body()) {
         Position chsp = m.GetPosition(chs);
         if (clang::isa<clang::SwitchCase>(chs)) {
             chsp.CheckBeginColumnThrow(cinc);
             visitSwitchCaseStmt((clang::SwitchCase *) chs, cinc);
+            last = (clang::SwitchCase *) chs;
         } else {
+            if (chsp.Begin.Line == m.GetPosition(last).Begin.Line) {
+                Visit(chs);
+                continue;
+            }
+
             chsp.CheckBeginColumnThrow(cinc + ins);
             inc += (cins + ins);
             Visit(chs);
