@@ -1,47 +1,26 @@
 #include "StmtIndentsChecker.h"
 
-StmtIndentsChecker::StmtIndentsChecker(const PositionManager &m, unsigned int inc, unsigned int ins)
-    : BaseChecker(m, inc, ins) { }
-
-void StmtIndentsChecker::VisitCompoundStmt(clang::CompoundStmt *s) {
-    Position sp = m.GetPosition(s);
-    if (sp.Begin.Line == sp.End.Line && s->body().end() - s->body().begin() == 1) {
-        return;
-    }
-
-    inc += ins;
-
-    for (clang::Stmt *cs : s->body()) {
-        auto csp = m.GetPosition(cs);
-        if (clang::isa<clang::NullStmt>(cs)) {
-            continue;
-        } else if (clang::isa<clang::LabelStmt>(cs)) {
-            if (!csp.CheckBeginColumn(inc - ins) && !csp.CheckBeginColumn(inc)) {
-                Position::Throw(csp);
-            }
-        } else {
-            csp.CheckBeginColumnThrow(inc);
-        }
-        Visit(cs);
-    }
-
-    inc -= ins;
-}
+StmtIndentsChecker::StmtIndentsChecker(const PositionManager &m, unsigned int inc) : BaseChecker(m, inc) { }
 
 void StmtIndentsChecker::VisitIfStmt(clang::IfStmt *s) {
     clang::Stmt *ts = s->getThen();
-    Position::LC ifp = m.FromLocation(s->getIfLoc());
+    Position cep = m.FromLocation(s->getCond()->getLocEnd());
     Position tsp = m.GetPosition(ts);
     if (clang::isa<clang::CompoundStmt>(ts)) {
-        CheckBraces(s, tsp);
-        Visit(ts);
+        visitCompoundStmt((clang::CompoundStmt *) ts, cep);
     } else {
-        if (tsp.Begin.Line != ifp.Line && !tsp.CheckBeginColumn(inc + ins)) {
-            Position::Throw(tsp);
+        if (!OnTheSameLine(tsp, cep)) {
+            if (!HasIndent(tsp)) {
+                Position::Throw(tsp);
+            }
+
+            auto old = inc;
+            inc = tsp.Begin.Column - 1;
+            Visit(ts);
+            inc = old;
+        } else {
+            Visit(ts);
         }
-        inc += ins;
-        Visit(ts);
-        inc -= ins;
     }
 
     clang::Stmt *es = s->getElse();
@@ -49,19 +28,24 @@ void StmtIndentsChecker::VisitIfStmt(clang::IfStmt *s) {
         return;
     }
 
-    Position::LC elp = m.FromLocation(s->getElseLoc());
+    Position elp = m.FromLocation(s->getElseLoc());
+    if (tsp.End.Line != elp.End.Line) {
+        elp.CheckBeginColumnThrow(this->inc);
+    }
+
     Position esp = m.GetPosition(es);
     if (clang::isa<clang::CompoundStmt>(es)) {
-        CheckBraces(es, esp);
-        Visit(es);
+        visitCompoundStmt((clang::CompoundStmt *) es, elp);
     } else {
-        if (esp.Begin.Line != elp.Line) {
-            if (!esp.CheckBeginColumn(inc + ins)) {
+        if (!OnTheSameLine(esp, elp)) {
+            if (!HasIndent(esp)) {
                 Position::Throw(esp);
             }
-            inc += ins;
+
+            auto old = inc;
+            inc = esp.Begin.Column - 1;
             Visit(es);
-            inc -= ins;
+            inc = old;
         } else {
             Visit(es);
         }
@@ -70,52 +54,58 @@ void StmtIndentsChecker::VisitIfStmt(clang::IfStmt *s) {
 
 void StmtIndentsChecker::VisitWhileStmt(clang::WhileStmt *s) {
     clang::Stmt *bs = s->getBody();
-    Position::LC sp = m.FromLocation(s->getCond()->getLocEnd());
+    Position sp = m.FromLocation(s->getCond()->getLocEnd());
     Position bsp = m.GetPosition(bs);
+
     if (clang::isa<clang::CompoundStmt>(bs)) {
-        CheckBraces(sp, bsp);
-        Visit(bs);
+        visitCompoundStmt((clang::CompoundStmt *) bs, sp);
     } else {
-        if (bsp.Begin.Line != sp.Line && !bsp.CheckBeginColumn(inc + ins)) {
+        if (!OnTheSameLine(bsp, sp) && !HasIndent(bsp)) {
             Position::Throw(bsp);
         }
-        inc += ins;
+
+        auto old = inc;
+        inc = bsp.Begin.Column - 1;
         Visit(bs);
-        inc -= ins;
+        inc = old;
     }
 }
 
 void StmtIndentsChecker::VisitForStmt(clang::ForStmt *s) {
     clang::Stmt *bs = s->getBody();
-    Position::LC sp = m.FromLocation(s->getRParenLoc());
+    Position sp = m.FromLocation(s->getRParenLoc());
     Position bsp = m.GetPosition(bs);
+
     if (clang::isa<clang::CompoundStmt>(bs)) {
-        CheckBraces(sp, bsp);
-        Visit(bs);
+        visitCompoundStmt((clang::CompoundStmt *) bs, sp);
     } else {
-        if (bsp.Begin.Line != sp.Line && !bsp.CheckBeginColumn(inc + ins)) {
+        if (!OnTheSameLine(bsp, sp) && !HasIndent(bsp)) {
             Position::Throw(bsp);
         }
-        inc += ins;
+
+        auto old = inc;
+        inc = bsp.Begin.Column - 1;
         Visit(bs);
-        inc -= ins;
+        inc = old;
     }
 }
 
 void StmtIndentsChecker::VisitDoStmt(clang::DoStmt *s) {
     clang::Stmt *bs = s->getBody();
-    Position::LC sp = m.FromLocation(s->getDoLoc());
+    Position sp = m.FromLocation(s->getDoLoc());
     Position bsp = m.GetPosition(bs);
+
     if (clang::isa<clang::CompoundStmt>(bs)) {
-        CheckBraces(sp, bsp);
-        Visit(bs);
+        visitCompoundStmt((clang::CompoundStmt *) bs, sp);
     } else {
-        if (bsp.Begin.Line != sp.Line && !bsp.CheckBeginColumn(inc + ins)) {
+        if (!OnTheSameLine(bsp, sp) && !HasIndent(bsp)) {
             Position::Throw(bsp);
         }
-        inc += ins;
+
+        auto old = inc;
+        inc = bsp.Begin.Column - 1;
         Visit(bs);
-        inc -= ins;
+        inc = old;
     }
 }
 
@@ -129,59 +119,66 @@ void StmtIndentsChecker::VisitSwitchStmt(clang::SwitchStmt *s) {
     }
 }
 
-void StmtIndentsChecker::visitSwitchCaseStmt(clang::SwitchCase *s, unsigned int cinc) {
+unsigned int StmtIndentsChecker::visitSwitchCaseStmt(clang::SwitchCase *s, unsigned int cinc) {
     clang::Stmt *ss = s->getSubStmt();
     Position sp = m.GetPosition(s), ssp = m.GetPosition(ss);
     if (clang::isa<clang::CompoundStmt>(ss)) {
-        CheckBraces(s, ssp);
+        auto old = inc;
+        if (!OnTheSameLine(sp, ssp)) {
+            inc = ssp.Begin.Column - 1;
+        }
+        visitCompoundStmt((clang::CompoundStmt *) ss, sp);
+        inc = old;
+        return (ssp.Begin.Column - 1) - inc;
     } else if (clang::isa<clang::SwitchCase>(ss)) {
-        if (ssp.Begin.Line != sp.Begin.Line && !ssp.CheckBeginColumn(cinc)) {
-            Position::Throw(ssp);
-        }
+        return visitSwitchCaseStmt((clang::SwitchCase *) ss, cinc);
     } else {
-        if (ssp.Begin.Line != sp.Begin.Line && !ssp.CheckBeginColumn(cinc + ins)) {
-            Position::Throw(ssp);
-        }
-    }
+        if (!OnTheSameLine(sp, ssp)) {
+            if (ssp.Begin.Column <= cinc) {
+                Position::Throw(ssp);
+            }
 
-    inc += ins;
-    if (cinc == inc) {
-        inc += ins;
-        Visit(ss);
-        inc -= ins;
-    } else {
-        Visit(ss);
+            auto old = inc;
+            inc = ssp.Begin.Column - 1;
+            Visit(ss);
+            inc = old;
+        } else {
+            Visit(ss);
+        }
+
+        return (ssp.Begin.Column - 1) - inc;
     }
-    inc -= ins;
 }
 
 void StmtIndentsChecker::checkSwitchBody(clang::SwitchStmt *s, clang::CompoundStmt *cs) {
     clang::Stmt *fs = cs->body_front();
     Position fsp = m.GetPosition(fs);
-    unsigned int cinc = inc;
-    unsigned int cins = 0;
-    if (fsp.CheckBeginColumn(inc + ins)) {
-        cinc += ins;
-        cins = ins;
-    }
+    unsigned int cinc = fsp.Begin.Column - 1;
+    unsigned int cind = 0;
 
     clang::SwitchCase *last = nullptr;
     for (auto chs : cs->body()) {
         Position chsp = m.GetPosition(chs);
         if (clang::isa<clang::SwitchCase>(chs)) {
             chsp.CheckBeginColumnThrow(cinc);
-            visitSwitchCaseStmt((clang::SwitchCase *) chs, cinc);
+            cind = visitSwitchCaseStmt((clang::SwitchCase *) chs, cinc);
             last = (clang::SwitchCase *) chs;
         } else {
-            if (chsp.Begin.Line == m.GetPosition(last).Begin.Line) {
-                Visit(chs);
+            Position lp = m.GetPosition(last);
+            if (OnTheSameLine(chsp, lp)) {
+                if (clang::isa<clang::CompoundStmt>(chs)) {
+                    visitCompoundStmt((clang::CompoundStmt *) chs, lp);
+                } else {
+                    Visit(chs);
+                }
                 continue;
             }
 
-            chsp.CheckBeginColumnThrow(cinc + ins);
-            inc += (cins + ins);
+            chsp.CheckBeginColumnThrow(cinc + cind);
+            auto old = inc;
+            inc = cinc + cind;
             Visit(chs);
-            inc -= (cins + ins);
+            inc = old;
         }
     }
 }
@@ -206,4 +203,49 @@ void StmtIndentsChecker::VisitCallExpr(clang::CallExpr *e) {
             prev = ae;
         }
     }
+}
+
+void StmtIndentsChecker::visitCompoundStmt(clang::CompoundStmt *s, Position pp) {
+    Position sp = m.GetPosition(s);
+    CheckBraces(pp.Begin, sp);
+    if (InOneLine(sp)) {
+        return;
+    }
+
+    unsigned int inc = DetermineIndent(s);
+    if (inc == this->inc) {
+        Position::Throw(sp);
+    }
+    unsigned int oldInc = this->inc;
+    this->inc = inc;
+
+    clang::Stmt *pr = nullptr;
+    for (clang::Stmt *cs : s->body()) {
+        Position csp = m.GetPosition(cs);
+
+        if (clang::isa<clang::NullStmt>(cs)) {
+            continue;
+        } else if (clang::isa<clang::LabelStmt>(cs)) {
+            if (!csp.CheckBeginColumn(oldInc) && !csp.CheckBeginColumn(this->inc)) {
+                Position::Throw(csp);
+            }
+        } else if (pr != nullptr && OnTheSameLine(m.GetPosition(pr), csp) && clang::isa<clang::Expr>(cs)) {
+            continue;
+        } else if (clang::isa<clang::CompoundStmt>(cs)) {
+            visitCompoundStmt((clang::CompoundStmt *) cs, csp);
+            pr = cs;
+            continue;
+        } else {
+            csp.CheckBeginColumnThrow(this->inc);
+        }
+
+        Visit(cs);
+        pr = cs;
+    }
+
+    this->inc = oldInc;
+}
+
+void StmtIndentsChecker::VisitLabelStmt(clang::LabelStmt *s) {
+    Visit(s->getSubStmt());
 }

@@ -10,6 +10,9 @@ Position::LC::LC(clang::SourceLocation loc, const clang::SourceManager &m) {
 
 Position::LC::LC() : Line(0), Column(0) { }
 
+
+Position::Position(Position::LC begin) : Position(begin, begin, "input.cc") { }
+
 Position::Position(Position::LC begin, Position::LC end, std::string filename) :
     Begin(begin), End(end), Filename(filename) { }
 

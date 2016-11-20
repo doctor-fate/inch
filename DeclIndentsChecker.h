@@ -6,11 +6,11 @@
 
 class DeclIndentsChecker : public BaseChecker, public clang::DeclVisitor<DeclIndentsChecker> {
 public:
-    DeclIndentsChecker(clang::ASTContext &context, unsigned int inc, unsigned int ins);
+    DeclIndentsChecker(clang::ASTContext &context, unsigned int inc);
 
     void VisitTranslationUnitDecl(clang::TranslationUnitDecl *unit);
 
-    void VisitDeclContext(clang::DeclContext *dc, bool indent = false);
+    void VisitDeclContext(clang::Decl *d, clang::DeclContext *dc, bool indent = false);
 
     void VisitRecordDecl(clang::RecordDecl *d);
 

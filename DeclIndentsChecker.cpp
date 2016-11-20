@@ -1,44 +1,48 @@
 #include "DeclIndentsChecker.h"
 
-DeclIndentsChecker::DeclIndentsChecker(clang::ASTContext &context, unsigned int inc, unsigned int ins) :
-    BaseChecker(context.getSourceManager(), inc, ins) { }
+DeclIndentsChecker::DeclIndentsChecker(clang::ASTContext &context, unsigned int inc) : BaseChecker(
+    context.getSourceManager(), inc) { }
 
 void DeclIndentsChecker::VisitTranslationUnitDecl(clang::TranslationUnitDecl *unit) {
-    VisitDeclContext(unit);
+    VisitDeclContext(unit, unit);
 }
 
-void DeclIndentsChecker::VisitDeclContext(clang::DeclContext *dc, bool indent) {
+void DeclIndentsChecker::VisitDeclContext(clang::Decl *d, clang::DeclContext *dc, bool indent) {
+    Position dp = m.GetPosition(d);
+    unsigned int inc = 0, oldInc = 0;
+
     if (indent) {
-        this->inc += ins;
+        inc = DetermineIndent(dp, dc);
+        oldInc = this->inc;
+        this->inc = inc;
     }
 
-    for (auto d : dc->decls()) {
-        auto p = m.GetPosition(d);
-        if (p.Filename != "input.cc") {
+    for (auto cd : dc->decls()) {
+        Position cdp = m.GetPosition(cd);
+        if (cdp.Filename != "input.cc") {
             continue;
         }
 
-        auto fd = clang::dyn_cast_or_null<clang::FunctionDecl>(d);
+        clang::FunctionDecl *fd = clang::dyn_cast_or_null<clang::FunctionDecl>(cd);
         if (fd != nullptr && fd->isImplicit()) {
             continue;
         }
 
-        if (!p.CheckBeginColumn(inc) && !(clang::isa<clang::RecordDecl>(d) || clang::isa<clang::EnumDecl>(d))) {
-            Position::Throw(p);
+        if (!cdp.CheckBeginColumn(this->inc) &&
+            !(clang::isa<clang::RecordDecl>(cd) || clang::isa<clang::EnumDecl>(cd))) {
+            Position::Throw(cdp);
         }
 
-        Visit(d);
+        Visit(cd);
     }
 
-    if (indent) {
-        this->inc -= ins;
-    }
+    this->inc = oldInc;
 }
 
 void DeclIndentsChecker::VisitRecordDecl(clang::RecordDecl *d) {
     Position p = m.FromSourceRange(d->getBraceRange());
     if (p.Begin.Line != p.End.Line) {
-        VisitDeclContext(d, true);
+        VisitDeclContext(d, d, true);
     }
 }
 
@@ -48,18 +52,21 @@ void DeclIndentsChecker::VisitFieldDecl(clang::FieldDecl *d) {
 }
 
 void DeclIndentsChecker::VisitEnumDecl(clang::EnumDecl *d) {
-    inc += ins;
+    Position dp = m.GetPosition(d);
+    unsigned int inc = DetermineIndent(dp, d);
+    unsigned int oldInc = this->inc;
+    this->inc = inc;
 
     clang::Decl *prev = d;
     for (auto cd : d->decls()) {
-        Position pp = m.GetPosition(prev), cp = m.GetPosition(cd);
-        if (cp.Begin.Line != pp.Begin.Line && !cp.CheckBeginColumn(inc)) {
-            Position::Throw(cp);
+        Position pp = m.GetPosition(prev), cdp = m.GetPosition(cd);
+        if (!OnTheSameLine(cdp, pp) && !cdp.CheckBeginColumn(this->inc)) {
+            Position::Throw(cdp);
         }
         prev = cd;
     }
 
-    inc -= ins;
+    this->inc = oldInc;
 }
 
 void DeclIndentsChecker::VisitFunctionDecl(clang::FunctionDecl *d) {
@@ -89,17 +96,15 @@ void DeclIndentsChecker::VisitFunctionDecl(clang::FunctionDecl *d) {
         auto csp = m.GetPosition(cs);
         CheckBraces(prev, csp);
 
-        StmtIndentsChecker sic(m, inc, ins);
-        sic.Visit(cs);
+        StmtIndentsChecker sic(m, inc);
+        sic.visitCompoundStmt(cs, fp);
     }
 }
 
 void DeclIndentsChecker::VisitVarDecl(clang::VarDecl *d) {
     clang::Expr *ie = d->getInit();
     if (ie != nullptr) {
-        Position dp = m.GetPosition(d), iep = m.GetPosition(ie);
-        if (dp.Begin.Line != iep.Begin.Line || iep.Begin.Line != iep.End.Line) {
-            Position::Throw(dp);
-        }
+        StmtIndentsChecker sic(m, inc);
+        sic.Visit(ie);
     }
 }

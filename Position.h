@@ -18,6 +18,8 @@ struct Position {
 
     Position();
 
+    Position(LC begin);
+
     Position(LC begin, LC end, std::string filename);
 
     static void Throw(const Position &p);

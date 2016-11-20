@@ -9,17 +9,18 @@
 #include <clang/AST/StmtVisitor.h>
 #include "Position.h"
 #include "DeclIndentsChecker.h"
-#include "DeclIndentDefiner.h"
 
-size_t countTabs(const std::string &s) {
-    size_t n = 0;
-    for (auto c = s.begin(); c != s.end(); n++, c++) {
-        if (*c != '\t') {
-            break;
+void replace(std::stringstream &ss, const std::string &line) {
+    bool rm = true;
+    for (auto c = line.begin(); c != line.end(); c++) {
+        if (*c == '\t' && rm) {
+            ss << std::string(8, ' ');
+        } else {
+            rm = rm && isspace(*c);
+            ss << *c;
         }
     }
-
-    return n;
+    ss << std::endl;
 }
 
 std::string processFile(std::ifstream &in) {
@@ -27,9 +28,7 @@ std::string processFile(std::ifstream &in) {
     char *buf = new char[512];
     while (in.getline(buf, 512)) {
         std::string line(buf);
-        size_t n = countTabs(line);
-        line.replace(0, n, n * 4, ' ');
-        ss << line << std::endl;
+        replace(ss, line);
     }
     delete[] buf;
 
@@ -47,13 +46,8 @@ std::shared_ptr<Position> check(const std::string &code) {
         return ep;
     }
     clang::ASTContext &context = ast->getASTContext();
-    DeclIndentDefiner idv(context);
-    int indent = idv.Indent(context.getTranslationUnitDecl());
-    if (indent <= 0) {
-        indent = 4;
-    }
 
-    DeclIndentsChecker icv(context, 0, (unsigned int) indent);
+    DeclIndentsChecker icv(context, 0);
     try {
         icv.Visit(context.getTranslationUnitDecl());
     } catch (Position &p) {
