@@ -126,10 +126,17 @@ unsigned int StmtIndentsChecker::visitSwitchCaseStmt(clang::SwitchCase *s, unsig
         auto old = inc;
         if (!OnTheSameLine(sp, ssp)) {
             inc = ssp.Begin.Column - 1;
+            visitCompoundStmt((clang::CompoundStmt *) ss, sp);
+            inc = old;
+        } else {
+            if (!InOneLine(ssp)) {
+                inc = (ssp.End.Column - 1);
+                visitCompoundStmt((clang::CompoundStmt *) ss, sp);
+                inc = old;
+                return (ssp.End.Column - 1) - cinc;
+            }
+            return 0;
         }
-        visitCompoundStmt((clang::CompoundStmt *) ss, sp);
-        inc = old;
-        return (ssp.Begin.Column - 1) - inc;
     } else if (clang::isa<clang::SwitchCase>(ss)) {
         return visitSwitchCaseStmt((clang::SwitchCase *) ss, cinc);
     } else {
@@ -144,10 +151,11 @@ unsigned int StmtIndentsChecker::visitSwitchCaseStmt(clang::SwitchCase *s, unsig
             inc = old;
         } else {
             Visit(ss);
+            return 0;
         }
-
-        return (ssp.Begin.Column - 1) - inc;
     }
+
+    return (ssp.Begin.Column - 1) - cinc;
 }
 
 void StmtIndentsChecker::checkSwitchBody(clang::SwitchStmt *s, clang::CompoundStmt *cs) {
@@ -172,6 +180,12 @@ void StmtIndentsChecker::checkSwitchBody(clang::SwitchStmt *s, clang::CompoundSt
                     Visit(chs);
                 }
                 continue;
+            }
+
+            if (cind == 0) {
+                if ((cind = (chsp.Begin.Column - 1) - cinc) == 0) {
+                    Position::Throw(chsp);
+                }
             }
 
             chsp.CheckBeginColumnThrow(cinc + cind);

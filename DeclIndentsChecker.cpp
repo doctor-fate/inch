@@ -9,11 +9,11 @@ void DeclIndentsChecker::VisitTranslationUnitDecl(clang::TranslationUnitDecl *un
 
 void DeclIndentsChecker::VisitDeclContext(clang::Decl *d, clang::DeclContext *dc, bool indent) {
     Position dp = m.GetPosition(d);
-    unsigned int inc = 0, oldInc = 0;
+    unsigned int inc = 0, old = 0;
 
     if (indent) {
         inc = DetermineIndent(dp, dc);
-        oldInc = this->inc;
+        old = this->inc;
         this->inc = inc;
     }
 
@@ -36,7 +36,7 @@ void DeclIndentsChecker::VisitDeclContext(clang::Decl *d, clang::DeclContext *dc
         Visit(cd);
     }
 
-    this->inc = oldInc;
+    this->inc = old;
 }
 
 void DeclIndentsChecker::VisitRecordDecl(clang::RecordDecl *d) {
@@ -77,14 +77,14 @@ void DeclIndentsChecker::VisitFunctionDecl(clang::FunctionDecl *d) {
         clang::ParmVarDecl *fpd = d->getParamDecl(0);
         Position fpdp = m.GetPosition(fpd);
 
-        if (fpdp.Begin.Line != fp.Begin.Line && fpdp.Begin.Column == 1) {
+        if (!OnTheSameLine(fpdp, fp) && fpdp.Begin.Column == 1) {
             Position::Throw(fpdp);
         }
 
         prev = fpd;
         for (auto *pd : d->parameters()) {
             auto pp = m.GetPosition(prev), pdp = m.GetPosition(pd);
-            if (pdp.Begin.Line != pp.Begin.Line && pdp.Begin.Column == 1) {
+            if (!OnTheSameLine(pdp, pp) && pdp.Begin.Column == 1) {
                 Position::Throw(pdp);
             }
             prev = pd;
@@ -97,7 +97,7 @@ void DeclIndentsChecker::VisitFunctionDecl(clang::FunctionDecl *d) {
         CheckBraces(prev, csp);
 
         StmtIndentsChecker sic(m, inc);
-        sic.visitCompoundStmt(cs, fp);
+        sic.visitCompoundStmt(cs, m.GetPosition(prev));
     }
 }
 
