@@ -12,10 +12,14 @@
 
 void replace(std::stringstream &ss, const std::string &line) {
     bool rm = true;
+    unsigned int n = 0;
     for (auto c = line.begin(); c != line.end(); c++) {
         if (*c == '\t' && rm) {
-            ss << std::string(8, ' ');
+            ss << std::string(8 - n, ' ');
         } else {
+            if (*c == ' ') {
+                n = (n + 1) % 8;
+            }
             rm = rm && isspace(*c);
             ss << *c;
         }
