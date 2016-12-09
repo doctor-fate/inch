@@ -133,7 +133,6 @@ unsigned int StmtIndentsChecker::visitSwitchCaseStmt(clang::SwitchCase *s, unsig
                 inc = (ssp.End.Column - 1);
                 visitCompoundStmt((clang::CompoundStmt *) ss, sp);
                 inc = old;
-                return (ssp.End.Column - 1) - cinc;
             }
             return 0;
         }
@@ -166,6 +165,10 @@ void StmtIndentsChecker::checkSwitchBody(clang::SwitchStmt *s, clang::CompoundSt
 
     clang::SwitchCase *last = nullptr;
     for (auto chs : cs->body()) {
+        if (clang::isa<clang::NullStmt>(chs)) {
+            continue;
+        }
+
         Position chsp = m.GetPosition(chs);
         if (clang::isa<clang::SwitchCase>(chs)) {
             chsp.CheckBeginColumnThrow(cinc);
@@ -227,7 +230,7 @@ void StmtIndentsChecker::visitCompoundStmt(clang::CompoundStmt *s, Position pp) 
     }
 
     unsigned int inc = DetermineIndent(s);
-    if (inc == this->inc) {
+    if ((inc == 0 || inc == this->inc) && !s->body_empty()) {
         Position::Throw(sp);
     }
     unsigned int oldInc = this->inc;
@@ -236,11 +239,14 @@ void StmtIndentsChecker::visitCompoundStmt(clang::CompoundStmt *s, Position pp) 
     clang::Stmt *pr = nullptr;
     for (clang::Stmt *cs : s->body()) {
         Position csp = m.GetPosition(cs);
+        if (OnTheSameLine(csp, sp)) {
+            Position::Throw(csp);
+        }
 
         if (clang::isa<clang::NullStmt>(cs)) {
             continue;
         } else if (clang::isa<clang::LabelStmt>(cs)) {
-            if (!csp.CheckBeginColumn(oldInc) && !csp.CheckBeginColumn(this->inc)) {
+            if (csp.Begin.Column > this->inc + 1) {
                 Position::Throw(csp);
             }
         } else if (pr != nullptr && OnTheSameLine(m.GetPosition(pr), csp) && clang::isa<clang::Expr>(cs)) {
@@ -261,5 +267,17 @@ void StmtIndentsChecker::visitCompoundStmt(clang::CompoundStmt *s, Position pp) 
 }
 
 void StmtIndentsChecker::VisitLabelStmt(clang::LabelStmt *s) {
-    Visit(s->getSubStmt());
+    Position sp = m.GetPosition(s);
+    clang::Stmt *ss = s->getSubStmt();
+    Position ssp = m.GetPosition(ss);
+
+    unsigned int oldInc = this->inc;
+    if (OnTheSameLine(ssp, sp)) {
+        this->inc = sp.Begin.Column - 1;
+    } else {
+        this->inc = ssp.Begin.Column - 1;
+    }
+
+    Visit(ss);
+    this->inc = oldInc;
 }

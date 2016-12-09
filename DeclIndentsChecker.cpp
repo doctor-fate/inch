@@ -1,7 +1,7 @@
 #include "DeclIndentsChecker.h"
 
-DeclIndentsChecker::DeclIndentsChecker(clang::ASTContext &context, unsigned int inc) : BaseChecker(
-    context.getSourceManager(), inc) { }
+DeclIndentsChecker::DeclIndentsChecker(clang::ASTContext &context, unsigned int inc) :
+        BaseChecker(context.getSourceManager(), inc) { }
 
 void DeclIndentsChecker::VisitTranslationUnitDecl(clang::TranslationUnitDecl *unit) {
     VisitDeclContext(unit, unit);

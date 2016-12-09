@@ -16,6 +16,7 @@ void replace(std::stringstream &ss, const std::string &line) {
     for (auto c = line.begin(); c != line.end(); c++) {
         if (*c == '\t' && rm) {
             ss << std::string(8 - n, ' ');
+            n = 0;
         } else {
             if (*c == ' ') {
                 n = (n + 1) % 8;
@@ -27,14 +28,39 @@ void replace(std::stringstream &ss, const std::string &line) {
     ss << std::endl;
 }
 
+std::istream &getLine(std::istream &is, std::string &out) {
+    out.clear();
+
+    std::istream::sentry s(is, true);
+    std::streambuf *sb = is.rdbuf();
+
+    while (true) {
+        int c = sb->sbumpc();
+        switch (c) {
+        case '\n':
+            return is;
+        case '\r':
+            if (sb->sgetc() == '\n') {
+                sb->sbumpc();
+            }
+            return is;
+        case EOF:
+            if (out.empty()) {
+                is.setstate(std::ios::eofbit);
+            }
+            return is;
+        default:
+            out += (char) c;
+        }
+    }
+}
+
 std::string processFile(std::ifstream &in) {
     std::stringstream ss;
-    char *buf = new char[512];
-    while (in.getline(buf, 512)) {
-        std::string line(buf);
+    std::string line;
+    while (getLine(in, line)) {
         replace(ss, line);
     }
-    delete[] buf;
 
     return ss.str();
 }
@@ -42,8 +68,8 @@ std::string processFile(std::ifstream &in) {
 std::shared_ptr<Position> check(const std::string &code) {
     auto ep = std::make_shared<Position>();
     auto ast = clang::tooling::buildASTFromCodeWithArgs(code, {
-        "-I", "/usr/local/lib/clang/3.9.0/include",
-        "-x", "c", "-std=c11"
+            "-I", "/usr/local/lib/clang/3.9.0/include",
+            "-x", "c", "-std=c11", "-D__DEBUG__"
     });
     if (ast == nullptr) {
         fprintf(stderr, "ast is null. probably bad source.");
@@ -73,7 +99,7 @@ int main(int argc, const char **argv) {
     const char *filename = argv[1];
     std::ifstream in;
     in.open(filename);
-    if (in.bad()) {
+    if (!in.is_open()) {
         fprintf(stderr, "can not open source file.");
         return 1;
     }

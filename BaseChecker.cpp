@@ -39,15 +39,34 @@ unsigned int BaseChecker::DetermineIndent(Position dp, clang::DeclContext *dc) {
 
 unsigned int BaseChecker::DetermineIndent(clang::CompoundStmt *s) {
     Position sp = m.GetPosition(s);
+    clang::LabelStmt *ls = nullptr;
     for (auto cs : s->body()) {
         Position csp = m.GetPosition(cs);
-        if (clang::isa<clang::NullStmt>(cs) || clang::isa<clang::LabelStmt>(cs)) {
+        if (clang::isa<clang::NullStmt>(cs)) {
+            continue;
+        }
+        if (clang::isa<clang::LabelStmt>(cs)) {
+            if (ls == nullptr) {
+                ls = clang::dyn_cast<clang::LabelStmt>(cs);
+            }
             continue;
         }
 
         if (!OnTheSameLine(csp, sp)) {
             return csp.Begin.Column - 1;
         }
+    }
+
+    if (ls != nullptr) {
+        Position lsp = m.GetPosition(ls);
+        clang::Stmt *lss = ls->getSubStmt();
+        if (lss != nullptr) {
+            Position lssp = m.GetPosition(lss);
+            if (!OnTheSameLine(lsp, lssp)) {
+                return lssp.Begin.Column - 1;
+            }
+        }
+        return lsp.Begin.Column - 1;
     }
 
     return 0;
